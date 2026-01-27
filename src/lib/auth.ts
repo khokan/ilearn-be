@@ -39,7 +39,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: false,
-    requireEmailVerification: true
+    requireEmailVerification: false
   },
   emailVerification: {
     sendOnSignUp: true,
@@ -48,7 +48,7 @@ export const auth = betterAuth({
       try {
         const verificationUrl = `${process.env.APP_URL}/verify-email?token=${token}`
         const info = await transporter.sendMail({
-          from: '"Prisma Blog" <prismablog@ph.com>',
+          from: '"Skill Bridge" <prismablog@ph.com>',
           to: user.email,
           subject: "Please verify your email!",
           html: `<!DOCTYPE html>
@@ -136,7 +136,7 @@ export const auth = betterAuth({
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <h1>Prisma Blog</h1>
+      <h1>Skill Bridge</h1>
     </div>
 
     <!-- Content -->
@@ -144,7 +144,7 @@ export const auth = betterAuth({
       <h2>Verify Your Email Address</h2>
       <p>
         Hello ${user.name} <br /><br />
-        Thank you for registering on <strong>Prisma Blog</strong>.
+        Thank you for registering on <strong>Skill Bridge</strong>.
         Please confirm your email address to activate your account.
       </p>
 
@@ -169,13 +169,13 @@ export const auth = betterAuth({
 
       <p>
         Regards, <br />
-        <strong>Prisma Blog Team</strong>
+        <strong>Skill Bridge Team</strong>
       </p>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      © 2025 Prisma Blog. All rights reserved.
+      © 2025 Skill Bridge. All rights reserved.
     </div>
   </div>
 </body>
