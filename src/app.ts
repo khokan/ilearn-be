@@ -2,7 +2,6 @@ import express, { Application } from "express";
 import { toNodeHandler } from "better-auth/node";
 import cors from 'cors';
 import { auth } from "./lib/auth";
-import { postRouter } from "./modules/post/post.router";
 import { bookingRouter } from "./modules/bookings/bookings.route";
 import { profileRouter } from "./modules/tutorProfile/profile.router";
 import { tutorRoutes } from "./modules/tutor/tutor.route";
@@ -21,7 +20,6 @@ app.use(express.json());
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
-app.use('/posts', postRouter)
 app.use("/api/bookings", bookingRouter);
 app.use("/api/tutor-profile", profileRouter);
 

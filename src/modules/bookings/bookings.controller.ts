@@ -28,7 +28,6 @@ export const BookingsController = {
 
   cancel: async (req: Request, res: Response) => {
     try {
-      console.log("cancel", req.user)
       if (!req.user) return res.status(401).json({ success: false, message: "Unauthorized" });
 
        // ✅ bookingId comes from URL param
