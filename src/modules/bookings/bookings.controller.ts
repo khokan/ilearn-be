@@ -27,10 +27,21 @@ export const BookingsController = {
   },
 
   cancel: async (req: Request, res: Response) => {
-    try {``
+    try {
+      console.log("cancel", req.user)
       if (!req.user) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-      const updated = await BookingsService.cancel(req.user.id, req.user.id);
+       // ✅ bookingId comes from URL param
+      const bookingId = req.params.id;
+
+      if (!bookingId) {
+        return res.status(400).json({
+          success: false,
+          message: "bookingId is required",
+        });
+    }
+
+    const updated = await BookingsService.cancel(req.user.id, bookingId as string);
 
       return res.json({ success: true, message: "Booking cancelled", data: updated });
     } catch (e: any) {
