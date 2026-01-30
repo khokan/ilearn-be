@@ -4,6 +4,7 @@ import cors from 'cors';
 import { auth } from "./lib/auth";
 import { postRouter } from "./modules/post/post.router";
 import { bookingRouter } from "./modules/bookings/bookings.route";
+import router from "./modules/tutorProfile/profile.router";
 
 
 const app: Application = express();
@@ -19,6 +20,7 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use('/posts', postRouter)
 app.use("/api/bookings", bookingRouter);
+app.use("/api/tutor-profile", router);
 
 app.get("/", (req, res) => {
     res.send("Skill Bridge!");
