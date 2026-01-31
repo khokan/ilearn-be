@@ -7,7 +7,7 @@ import { profileRouter } from "./modules/tutorProfile/profile.router";
 import { tutorRoutes } from "./modules/tutor/tutor.route";
 import { categoriesRoutes } from "./modules/categories/categories.route";
 import { tutorsRoutes } from "./modules/tutors/tutors.route";
-
+import { reviewRoutes } from "./modules/reviews/reviews.route";
 
 
 
@@ -28,6 +28,8 @@ app.use("/api/tutor-profile", profileRouter);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/tutor", tutorRoutes);
 app.use("/api/tutors", tutorsRoutes);
+
+app.use("/api/reviews", reviewRoutes);
 
 
 app.get("/", (req, res) => {

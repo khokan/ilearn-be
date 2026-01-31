@@ -2,50 +2,40 @@ import { prisma } from "../../lib/prisma";
 
 type CreateReviewDto = {
   bookingId: string;
-  rating: number; // 1..5
+  rating: number;
   comment?: string;
 };
 
 export const ReviewsService = {
   create: async (studentId: string, dto: CreateReviewDto) => {
-    if (dto.rating < 1 || dto.rating > 5) throw new Error("Rating must be 1..5");
+    if (!dto?.bookingId) throw new Error("bookingId is required");
+    if (!dto?.rating || dto.rating < 1 || dto.rating > 5) throw new Error("rating must be 1-5");
 
-    return prisma.$transaction(async (tx) => {
-      const booking = await tx.booking.findUnique({
-        where: { id: dto.bookingId },
-        include: { tutorProfile: true },
-      });
-      if (!booking) throw new Error("Booking not found");
-      if (booking.studentId !== studentId) throw new Error("Forbidden");
-      if (booking.status !== "COMPLETED") throw new Error("You can review only after completion");
+    const booking = await prisma.booking.findUnique({
+      where: { id: dto.bookingId },
+      select: { id: true, studentId: true, tutorProfileId: true, status: true },
+    });
 
-      const review = await tx.review.create({
-       data: {
+    if (!booking) throw new Error("Booking not found");
+    if (booking.studentId !== studentId) throw new Error("Forbidden");
+    if (booking.status !== "COMPLETED") throw new Error("Only COMPLETED bookings can be reviewed");
+
+    // prevent double review
+    const exists = await prisma.review.findFirst({
+      where: { bookingId: booking.id },
+      select: { id: true },
+    });
+    if (exists) throw new Error("Review already submitted");
+
+    return prisma.review.create({
+      data: {
         bookingId: booking.id,
         tutorProfileId: booking.tutorProfileId,
         studentId,
         rating: dto.rating,
-        comment: dto.comment?.trim() || null, // Trim and handle empty comments
+        comment: dto.comment ?? null,
       },
-        
-      });
-
-      // update tutor rating stats
-      const agg = await tx.review.aggregate({
-        where: { tutorProfileId: booking.tutorProfileId },
-        _avg: { rating: true },
-        _count: { rating: true },
-      });
-
-      await tx.tutorProfile.update({
-        where: { id: booking.tutorProfileId },
-        data: {
-          avgRating: agg._avg.rating ?? 0,
-          reviewCount: agg._count.rating,
-        },
-      });
-
-      return { id: review.id };
+      select: { id: true },
     });
   },
 };
