@@ -8,11 +8,25 @@ type UpdateCategoryDto = { name?: string; slug?: string; isActive?: boolean };
 export const AdminService = {
 
   stats: async () => {
-    const [userCount, tutorCount, studentCount, bookingCount, categoryCount] = await Promise.all([
+    const [
+      totalUsers,
+      totalStudents,
+      totalTutors,
+      totalAdmins,
+      activeUsers,
+      bannedUsers,
+      totalBookings,
+      activeCategories,
+      totalCategories,
+    ] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { role: "tutor" } }),
       prisma.user.count({ where: { role: "student" } }),
+      prisma.user.count({ where: { role: "tutor" } }),
+      prisma.user.count({ where: { role: "admin" } }),
+      prisma.user.count({ where: { status: "ACTIVE" } }),
+      prisma.user.count({ where: { status: "BANNED" } }),
       prisma.booking.count(),
+      prisma.category.count({ where: { isActive: true } }),
       prisma.category.count(),
     ]);
 
@@ -22,11 +36,15 @@ export const AdminService = {
     });
 
     return {
-      userCount,
-      tutorCount,
-      studentCount,
-      bookingCount,
-      categoryCount,
+      totalUsers,
+      totalStudents,
+      totalTutors,
+      totalAdmins,
+      activeUsers,
+      bannedUsers,
+      totalBookings,
+      totalCategories,
+      activeCategories,
       bookingByStatus,
     };
   },
