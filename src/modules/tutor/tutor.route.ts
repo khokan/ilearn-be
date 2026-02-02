@@ -12,4 +12,5 @@ router.put("/profile", TutorManageController.updateProfile);
 router.get("/availability", auth(UserRole.TUTOR), TutorManageController.getAvailability);
 router.put("/availability", auth(UserRole.TUTOR), TutorManageController.setAvailability);
 router.put("/categories", auth(UserRole.TUTOR), TutorManageController.setCategories);
+
 export const tutorRoutes = router;

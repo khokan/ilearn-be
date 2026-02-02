@@ -19,4 +19,13 @@ export const TutorsController = {
       return res.status(404).json({ success: false, message: e?.message ?? "Tutor not found" });
     }
   },
+   listReview: async (req: Request, res: Response) => {
+    try {
+      const data = await TutorsService.listReview(req.params.id as string);
+      console.log("test:", data)
+      return res.json({ success: true, data });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e?.message ?? "Failed" });
+    }
+  },
 };

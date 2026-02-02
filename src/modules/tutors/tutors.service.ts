@@ -40,4 +40,33 @@ export const TutorsService = {
     return tutor;
   },
   
+  listReview: async (tutorUserId: string) => {
+    const profile = await prisma.tutorProfile.findUnique({
+      where: { id: tutorUserId },
+      select: { id: true, avgRating: true, reviewCount: true },
+    });
+    if (!profile) throw new Error("Tutor profile not found");
+
+    const items = await prisma.review.findMany({
+      where: { tutorProfileId: profile.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        student: { select: { id: true, name: true } },
+        bookingId: true,
+      },
+    });
+
+    return {
+      summary: {
+        avgRating: profile.avgRating ?? 0,
+        reviewCount: profile.reviewCount ?? 0,
+      },
+      items,
+    };
+  },
 };

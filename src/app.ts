@@ -24,10 +24,13 @@ app.use(express.json());
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use("/api/bookings", bookingRouter);
+
 app.use("/api/tutor-profile", profileRouter);
 
 app.use("/api/categories", categoriesRoutes);
+
 app.use("/api/tutor", tutorRoutes);
+
 app.use("/api/tutors", tutorsRoutes);
 
 app.use("/api/reviews", reviewRoutes);
