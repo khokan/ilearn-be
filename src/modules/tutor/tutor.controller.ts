@@ -92,4 +92,19 @@ export const TutorManageController = {
       return res.status(400).json({ success: false, message: e?.message ?? "Failed" });
     }
   },
+
+    listReviewbyBookingId: async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+     
+    const bookingId = req.params.bookingId; // ✅ FIX
+    const data = await TutorManageService.listReviewbyBookingId(req.user.id, bookingId as string);
+    return res.json({ success: true, data });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, message: e?.message ?? "Failed" });
+  }
+},
 };

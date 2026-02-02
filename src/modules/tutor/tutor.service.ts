@@ -178,4 +178,39 @@ export const TutorManageService = {
 
     return { items: selected };
   },
+  
+ listReviewbyBookingId: async (tutorId: string, bookingId: string) => {
+  console.log(tutorId,bookingId)
+  const profile = await prisma.tutorProfile.findUnique({
+    where: { userId: tutorId },
+    select: { id: true, avgRating: true, reviewCount: true },
+  });
+  if (!profile) throw new Error("Tutor profile not found");
+
+  const items = await prisma.review.findMany({
+    where: {
+      bookingId,
+      tutorProfileId: profile.id, // 
+    },
+    orderBy: { createdAt: "desc" },
+    take: 1, // ✅ one booking should have max 1 review (recommended)
+    select: {
+      id: true,
+      rating: true,
+      comment: true,
+      createdAt: true,
+      student: { select: { id: true, name: true } },
+      bookingId: true,
+    },
+  });
+
+  return {
+    summary: {
+      avgRating: profile.avgRating ?? 0,
+      reviewCount: profile.reviewCount ?? 0,
+    },
+    // ✅ return single review for this booking
+    review: items[0] ?? null,
+  };
+},
 };
