@@ -9,6 +9,7 @@ router.use(auth(UserRole.STUDENT, UserRole.TUTOR, UserRole.ADMIN));
 
 router.post("/", auth(UserRole.STUDENT), BookingsController.create);
 router.get("/", BookingsController.listMineOrAll);
+router.post("/initiate-payment/:id", auth(UserRole.STUDENT), BookingsController.initiatePayment);
 router.patch("/:id/cancel", auth(UserRole.STUDENT), BookingsController.cancel);
 router.patch("/:id/complete", auth(UserRole.TUTOR), BookingsController.complete);
 

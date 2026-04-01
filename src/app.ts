@@ -12,11 +12,13 @@ import { adminRouter } from "./modules/admin/admin.route";
 import { notFound } from "./middlewares/notFound";
 import errorHandler from "./middlewares/globalErrorHandler";
 import { userRouter } from "./modules/users/users.route";
+import { PaymentController } from "./modules/payment/payment.controller";
 
 
 
 const app: Application = express();
 
+app.post("/webhook", express.raw({ type: "application/json" }), PaymentController.handleStripeWebhookEvent)
 
 app.use(cors({
     origin: process.env.APP_URL || "http://localhost:3000", // client side url

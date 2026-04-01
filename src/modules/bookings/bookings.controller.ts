@@ -67,4 +67,23 @@ export const BookingsController = {
       return res.status(400).json({ success: false, message: e.message ?? "Complete failed" });
     }
   },
+
+  initiatePayment: async (req: Request, res: Response) => {
+    try {
+      if (!req.user) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+      const bookingId = req.params.id;
+      if (!bookingId) {
+        return res.status(400).json({
+          success: false,
+          message: "bookingId is required",
+        });
+      }
+
+      const data = await BookingsService.initiatePayment(req.user.id, bookingId);
+      return res.json({ success: true, message: "Payment initiated", data });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message ?? "Payment initiation failed" });
+    }
+  },
 };

@@ -7,8 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npx tsx watch src/server.ts",
     "seed:admin": "npx tsx src/scripts/seedAdmin.ts",
-     "build": "prisma generate && tsup src/index.ts --format esm --platform node --target node20 --outDir api --external pg-native",
-     "postinstall": "prisma generate"
+    "build": "prisma generate && tsup src/index.ts --format esm --platform node --target node20 --outDir api --external pg-native",
+     "stripe:webhook": "cmd /c \"\"D:\\sakhawat\\\\pro hero\\stripe_1.35.0_windows_x86_64\\stripe.exe\" listen --forward-to http://localhost:5000/webhook\"",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
@@ -22,9 +23,9 @@
     "@types/nodemailer": "^7.0.4",
     "@types/pg": "^8.16.0",
     "prisma": "^7.2.0",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-     "tsup": "^8.5.1"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",
@@ -36,6 +37,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^7.0.12",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "stripe": "^21.0.1"
   }
 }
