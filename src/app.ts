@@ -15,6 +15,7 @@ import { userRouter } from "./modules/users/users.route";
 import { PaymentController } from "./modules/payment/payment.controller";
 import { planRoutes } from "./modules/plans/plan.route";
 import { subsriptionRotes } from "./modules/subscriptions/subscription.route";
+import { aiLearnRoutes } from "./modules/ailearn/ailearn.route";
 
 
 
@@ -61,6 +62,8 @@ app.use(
 app.use(express.json());
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
+
+app.use("/api/ai", aiLearnRoutes);
 
 app.use("/api/plans", planRoutes);
 

@@ -29,14 +29,14 @@ var config = {
   "clientVersion": "7.3.0",
   "engineVersion": "9d6ad21cbbceab97458517b147a6a09ff43aa735",
   "activeProvider": "postgresql",
-  "inlineSchema": 'model User {\n  id            String    @id\n  name          String\n  email         String\n  emailVerified Boolean   @default(true)\n  image         String?\n  createdAt     DateTime  @default(now())\n  updatedAt     DateTime  @updatedAt\n  sessions      Session[]\n  accounts      Account[]\n\n  role   String? @default("USER")\n  phone  String?\n  status String? @default("ACTIVE")\n\n  // Relations\n  tutorProfile    TutorProfile?\n  student         Student?\n  studentBookings Booking[]     @relation("StudentBookings")\n  tutorBookings   Booking[]     @relation("TutorBookings")\n  reviewsGiven    Review[]      @relation("ReviewsGiven")\n\n  @@unique([email])\n  @@index([role])\n  @@index([status])\n  @@map("user")\n}\n\nmodel Session {\n  id        String   @id\n  expiresAt DateTime\n  token     String\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n  ipAddress String?\n  userAgent String?\n  userId    String\n  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  @@unique([token])\n  @@index([userId])\n  @@map("session")\n}\n\nmodel Account {\n  id                    String    @id\n  accountId             String\n  providerId            String\n  userId                String\n  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)\n  accessToken           String?\n  refreshToken          String?\n  idToken               String?\n  accessTokenExpiresAt  DateTime?\n  refreshTokenExpiresAt DateTime?\n  scope                 String?\n  password              String?\n  createdAt             DateTime  @default(now())\n  updatedAt             DateTime  @updatedAt\n\n  @@index([userId])\n  @@map("account")\n}\n\nmodel Verification {\n  id         String   @id\n  identifier String\n  value      String\n  expiresAt  DateTime\n  createdAt  DateTime @default(now())\n  updatedAt  DateTime @updatedAt\n\n  @@index([identifier])\n  @@map("verification")\n}\n\nmodel AvailabilitySlot {\n  id             String   @id @default(cuid())\n  tutorProfileId String\n  startTime      DateTime\n  endTime        DateTime\n  isBooked       Boolean  @default(false)\n  createdAt      DateTime @default(now())\n\n  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)\n  booking      Booking?\n\n  @@index([tutorProfileId, startTime])\n  @@index([isBooked])\n}\n\nmodel Booking {\n  id             String        @id @default(cuid())\n  studentId      String\n  tutorId        String // userId of tutor\n  tutorProfileId String\n  availabilityId String?       @unique\n  status         BookingStatus @default(CONFIRMED)\n\n  // Session details\n  startTime DateTime\n  endTime   DateTime\n  price     Int\n  currency  String   @default("BDT")\n  notes     String?\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  // Relations\n  student      User         @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Restrict)\n  tutor        User         @relation("TutorBookings", fields: [tutorId], references: [id], onDelete: Restrict)\n  tutorProfile TutorProfile @relation("TutorProfileBookings", fields: [tutorProfileId], references: [id], onDelete: Restrict)\n\n  availability AvailabilitySlot? @relation(fields: [availabilityId], references: [id], onDelete: SetNull)\n  review       Review?\n\n  @@index([studentId, createdAt])\n  @@index([tutorId, createdAt])\n  @@index([tutorProfileId, startTime])\n  @@index([status])\n}\n\nmodel Category {\n  id        String   @id @default(cuid())\n  name      String   @unique\n  slug      String   @unique\n  isActive  Boolean  @default(true)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  tutors TutorCategory[]\n\n  @@index([isActive])\n}\n\nmodel Payment {\n  id                 String        @id @default(uuid(7))\n  amount             Float\n  transactionId      String        @unique @db.Uuid()\n  stripeEventId      String?       @unique\n  status             PaymentStatus @default(UNPAID)\n  invoiceUrl         String?\n  paymentGatewayData Json?\n  createdAt          DateTime      @default(now())\n  updatedAt          DateTime      @updatedAt\n\n  subscriptionId String       @unique\n  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)\n\n  @@index([subscriptionId])\n  @@index([transactionId])\n  @@map("payments")\n}\n\nmodel Plan {\n  id          String          @id @default(cuid())\n  name        String\n  slug        String          @unique\n  description String?\n  price       Float\n  currency    String          @default("USD")\n  interval    BillingInterval\n  isActive    Boolean         @default(true)\n  createdAt   DateTime        @default(now())\n  updatedAt   DateTime        @updatedAt\n\n  subscriptions         Subscription[]\n  subscriptionHistories SubscriptionHistory[]\n\n  @@map("plan")\n}\n\nmodel Post {\n  id         String     @id @default(uuid())\n  title      String     @db.VarChar(225)\n  content    String     @db.Text\n  thumbnail  String?\n  isFeatured Boolean    @default(false)\n  status     PostStatus @default(PUBLISHED)\n  tags       String[]\n  views      Int        @default(0)\n  authorId   String // better auth\n  createdAt  DateTime   @default(now())\n  updatedAt  DateTime   @updatedAt\n\n  @@index([authorId])\n  @@map("posts")\n}\n\nenum PostStatus {\n  DRAFT\n  PUBLISHED\n  ARCHIVED\n}\n\nmodel Review {\n  id             String @id @default(cuid())\n  bookingId      String @unique\n  tutorProfileId String\n  studentId      String\n\n  rating    Int // 1..5\n  comment   String?\n  createdAt DateTime @default(now())\n\n  // Relations\n  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)\n  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)\n  student      User         @relation("ReviewsGiven", fields: [studentId], references: [id], onDelete: Restrict)\n\n  @@index([tutorProfileId, createdAt])\n  @@index([rating])\n}\n\n// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = "prisma-client"\n  output   = "../../generated/prisma"\n}\n\ndatasource db {\n  provider = "postgresql"\n}\n\nenum Role {\n  STUDENT\n  TUTOR\n  ADMIN\n}\n\nenum UserStatus {\n  ACTIVE\n  BANNED\n}\n\nenum BookingStatus {\n  CONFIRMED\n  COMPLETED\n  CANCELLED\n}\n\nenum PaymentStatus {\n  PAID\n  UNPAID\n}\n\nenum SubscriptionStatus {\n  PENDING\n  ACTIVE\n  CANCELLED\n  EXPIRED\n  PAST_DUE\n  TRIAL\n}\n\nenum BillingInterval {\n  DAILY\n  MONTHLY\n  YEARLY\n  LIFETIME\n}\n\nmodel Student {\n  id            String    @id @default(uuid(7))\n  name          String\n  email         String    @unique\n  profilePhoto  String?\n  contactNumber String?\n  address       String?\n  isDeleted     Boolean   @default(false)\n  deletedAt     DateTime?\n  createdAt     DateTime  @default(now())\n  updatedAt     DateTime  @updatedAt\n  hasUsedTrial  Boolean   @default(false)\n\n  //relations\n\n  userId                String                @unique\n  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n  subscriptions         Subscription[]\n  subscriptionHistories SubscriptionHistory[]\n\n  @@index([email], name: "idx_student_email")\n  @@index([isDeleted], name: "idx_student_isDeleted")\n  @@map("student")\n}\n\nmodel Subscription {\n  id              String             @id @default(cuid())\n  studentId       String\n  planId          String\n  paymentStatus   PaymentStatus      @default(UNPAID)\n  status          SubscriptionStatus @default(PENDING)\n  startDate       DateTime?\n  endDate         DateTime?\n  paymentProvider String?\n  externalRef     String?\n  createdAt       DateTime           @default(now())\n  updatedAt       DateTime           @updatedAt\n\n  student   Student               @relation(fields: [studentId], references: [id])\n  plan      Plan                  @relation(fields: [planId], references: [id])\n  payment   Payment?\n  histories SubscriptionHistory[]\n\n  @@index([studentId])\n  @@index([planId])\n  @@index([status])\n  @@map("subscription")\n}\n\nmodel SubscriptionHistory {\n  id             String             @id @default(cuid())\n  subscriptionId String\n  studentId      String\n  planId         String\n  status         SubscriptionStatus\n  paymentStatus  PaymentStatus\n  startDate      DateTime?\n  endDate        DateTime?\n  archivedAt     DateTime           @default(now())\n\n  subscription Subscription @relation(fields: [subscriptionId], references: [id])\n  student      Student      @relation(fields: [studentId], references: [id])\n  plan         Plan         @relation(fields: [planId], references: [id])\n\n  @@index([subscriptionId])\n  @@index([studentId])\n  @@index([planId])\n  @@index([archivedAt])\n  @@map("subscription_history")\n}\n\nmodel TutorProfile {\n  id            String   @id @default(cuid())\n  userId        String   @unique\n  bio           String?\n  headline      String?\n  hourlyRate    Int // store in cents? or integer currency units (BDT). Keep consistent in app.\n  currency      String   @default("BDT")\n  languages     String[] @default([])\n  experienceYrs Int      @default(0)\n  education     String?\n  timezone      String   @default("Asia/Dhaka")\n  isVerified    Boolean  @default(false)\n\n  avgRating   Float @default(0)\n  reviewCount Int   @default(0)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  // Relations\n  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)\n  categories   TutorCategory[]\n  availability AvailabilitySlot[]\n  reviews      Review[]\n  bookings     Booking[]          @relation("TutorProfileBookings")\n\n  @@index([hourlyRate])\n  @@index([avgRating])\n}\n\nmodel TutorCategory {\n  tutorProfileId String\n  categoryId     String\n\n  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)\n  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)\n\n  @@id([tutorProfileId, categoryId])\n  @@index([categoryId])\n}\n',
+  "inlineSchema": 'model User {\n  id            String    @id\n  name          String\n  email         String\n  emailVerified Boolean   @default(true)\n  image         String?\n  createdAt     DateTime  @default(now())\n  updatedAt     DateTime  @updatedAt\n  sessions      Session[]\n  accounts      Account[]\n\n  role   String? @default("USER")\n  phone  String?\n  status String? @default("ACTIVE")\n\n  // Relations\n  tutorProfile    TutorProfile?\n  studentBookings Booking[]      @relation("StudentBookings")\n  tutorBookings   Booking[]      @relation("TutorBookings")\n  reviewsGiven    Review[]       @relation("ReviewsGiven")\n  subscriptions   Subscription[]\n\n  @@unique([email])\n  @@index([role])\n  @@index([status])\n  @@map("user")\n}\n\nmodel Session {\n  id        String   @id\n  expiresAt DateTime\n  token     String\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n  ipAddress String?\n  userAgent String?\n  userId    String\n  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  @@unique([token])\n  @@index([userId])\n  @@map("session")\n}\n\nmodel Account {\n  id                    String    @id\n  accountId             String\n  providerId            String\n  userId                String\n  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)\n  accessToken           String?\n  refreshToken          String?\n  idToken               String?\n  accessTokenExpiresAt  DateTime?\n  refreshTokenExpiresAt DateTime?\n  scope                 String?\n  password              String?\n  createdAt             DateTime  @default(now())\n  updatedAt             DateTime  @updatedAt\n\n  @@index([userId])\n  @@map("account")\n}\n\nmodel Verification {\n  id         String   @id\n  identifier String\n  value      String\n  expiresAt  DateTime\n  createdAt  DateTime @default(now())\n  updatedAt  DateTime @updatedAt\n\n  @@index([identifier])\n  @@map("verification")\n}\n\nmodel AvailabilitySlot {\n  id             String   @id @default(cuid())\n  tutorProfileId String\n  startTime      DateTime\n  endTime        DateTime\n  isBooked       Boolean  @default(false)\n  createdAt      DateTime @default(now())\n\n  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)\n  booking      Booking?\n\n  @@index([tutorProfileId, startTime])\n  @@index([isBooked])\n}\n\nmodel Booking {\n  id             String        @id @default(cuid())\n  studentId      String\n  tutorId        String // userId of tutor\n  tutorProfileId String\n  availabilityId String?       @unique\n  status         BookingStatus @default(CONFIRMED)\n\n  // Session details\n  startTime DateTime\n  endTime   DateTime\n  price     Int\n  currency  String   @default("BDT")\n  notes     String?\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  // Relations\n  student      User         @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Restrict)\n  tutor        User         @relation("TutorBookings", fields: [tutorId], references: [id], onDelete: Restrict)\n  tutorProfile TutorProfile @relation("TutorProfileBookings", fields: [tutorProfileId], references: [id], onDelete: Restrict)\n\n  availability AvailabilitySlot? @relation(fields: [availabilityId], references: [id], onDelete: SetNull)\n  review       Review?\n\n  @@index([studentId, createdAt])\n  @@index([tutorId, createdAt])\n  @@index([tutorProfileId, startTime])\n  @@index([status])\n}\n\nmodel Category {\n  id        String   @id @default(cuid())\n  name      String   @unique\n  slug      String   @unique\n  isActive  Boolean  @default(true)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  tutors TutorCategory[]\n\n  @@index([isActive])\n}\n\nmodel Payment {\n  id                 String        @id @default(uuid(7))\n  amount             Float\n  transactionId      String        @unique @db.Uuid()\n  stripeEventId      String?       @unique\n  status             PaymentStatus @default(UNPAID)\n  invoiceUrl         String?\n  paymentGatewayData Json?\n  createdAt          DateTime      @default(now())\n  updatedAt          DateTime      @updatedAt\n\n  subscriptionId String       @unique\n  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)\n\n  @@index([subscriptionId])\n  @@index([transactionId])\n  @@map("payments")\n}\n\nmodel Plan {\n  id          String          @id @default(cuid())\n  name        String\n  slug        String          @unique\n  description String?\n  price       Float\n  currency    String          @default("USD")\n  interval    BillingInterval\n  isActive    Boolean         @default(true)\n  createdAt   DateTime        @default(now())\n  updatedAt   DateTime        @updatedAt\n\n  subscriptions Subscription[]\n\n  @@map("plan")\n}\n\nmodel Post {\n  id         String     @id @default(uuid())\n  title      String     @db.VarChar(225)\n  content    String     @db.Text\n  thumbnail  String?\n  isFeatured Boolean    @default(false)\n  status     PostStatus @default(PUBLISHED)\n  tags       String[]\n  views      Int        @default(0)\n  authorId   String // better auth\n  createdAt  DateTime   @default(now())\n  updatedAt  DateTime   @updatedAt\n\n  @@index([authorId])\n  @@map("posts")\n}\n\nenum PostStatus {\n  DRAFT\n  PUBLISHED\n  ARCHIVED\n}\n\nmodel Review {\n  id             String @id @default(cuid())\n  bookingId      String @unique\n  tutorProfileId String\n  studentId      String\n\n  rating    Int // 1..5\n  comment   String?\n  createdAt DateTime @default(now())\n\n  // Relations\n  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)\n  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)\n  student      User         @relation("ReviewsGiven", fields: [studentId], references: [id], onDelete: Restrict)\n\n  @@index([tutorProfileId, createdAt])\n  @@index([rating])\n}\n\n// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = "prisma-client"\n  output   = "../../generated/prisma"\n}\n\ndatasource db {\n  provider = "postgresql"\n}\n\nenum Role {\n  STUDENT\n  TUTOR\n  ADMIN\n}\n\nenum UserStatus {\n  ACTIVE\n  BANNED\n}\n\nenum BookingStatus {\n  CONFIRMED\n  COMPLETED\n  CANCELLED\n}\n\nenum PaymentStatus {\n  PAID\n  UNPAID\n}\n\nenum SubscriptionStatus {\n  PENDING\n  ACTIVE\n  CANCELLED\n  EXPIRED\n  PAST_DUE\n  TRIAL\n}\n\nenum BillingInterval {\n  DAILY\n  MONTHLY\n  YEARLY\n  LIFETIME\n}\n\nmodel Subscription {\n  id              String             @id @default(cuid())\n  studentId       String\n  planId          String\n  paymentStatus   PaymentStatus      @default(UNPAID)\n  status          SubscriptionStatus @default(PENDING)\n  startDate       DateTime?\n  endDate         DateTime?\n  paymentProvider String?\n  externalRef     String?\n  createdAt       DateTime           @default(now())\n  updatedAt       DateTime           @updatedAt\n\n  student User     @relation(fields: [studentId], references: [id])\n  plan    Plan     @relation(fields: [planId], references: [id])\n  payment Payment?\n\n  @@index([studentId])\n  @@index([planId])\n  @@index([status])\n  @@map("subscription")\n}\n\nmodel TutorProfile {\n  id            String   @id @default(cuid())\n  userId        String   @unique\n  bio           String?\n  headline      String?\n  hourlyRate    Int // store in cents? or integer currency units (BDT). Keep consistent in app.\n  currency      String   @default("BDT")\n  languages     String[] @default([])\n  experienceYrs Int      @default(0)\n  education     String?\n  timezone      String   @default("Asia/Dhaka")\n  isVerified    Boolean  @default(false)\n\n  avgRating   Float @default(0)\n  reviewCount Int   @default(0)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  // Relations\n  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)\n  categories   TutorCategory[]\n  availability AvailabilitySlot[]\n  reviews      Review[]\n  bookings     Booking[]          @relation("TutorProfileBookings")\n\n  @@index([hourlyRate])\n  @@index([avgRating])\n}\n\nmodel TutorCategory {\n  tutorProfileId String\n  categoryId     String\n\n  tutorProfile TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)\n  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)\n\n  @@id([tutorProfileId, categoryId])\n  @@index([categoryId])\n}\n',
   "runtimeDataModel": {
     "models": {},
     "enums": {},
     "types": {}
   }
 };
-config.runtimeDataModel = JSON.parse('{"models":{"User":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"emailVerified","kind":"scalar","type":"Boolean"},{"name":"image","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"sessions","kind":"object","type":"Session","relationName":"SessionToUser"},{"name":"accounts","kind":"object","type":"Account","relationName":"AccountToUser"},{"name":"role","kind":"scalar","type":"String"},{"name":"phone","kind":"scalar","type":"String"},{"name":"status","kind":"scalar","type":"String"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"TutorProfileToUser"},{"name":"student","kind":"object","type":"Student","relationName":"StudentToUser"},{"name":"studentBookings","kind":"object","type":"Booking","relationName":"StudentBookings"},{"name":"tutorBookings","kind":"object","type":"Booking","relationName":"TutorBookings"},{"name":"reviewsGiven","kind":"object","type":"Review","relationName":"ReviewsGiven"}],"dbName":"user"},"Session":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"expiresAt","kind":"scalar","type":"DateTime"},{"name":"token","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"ipAddress","kind":"scalar","type":"String"},{"name":"userAgent","kind":"scalar","type":"String"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"SessionToUser"}],"dbName":"session"},"Account":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"accountId","kind":"scalar","type":"String"},{"name":"providerId","kind":"scalar","type":"String"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"AccountToUser"},{"name":"accessToken","kind":"scalar","type":"String"},{"name":"refreshToken","kind":"scalar","type":"String"},{"name":"idToken","kind":"scalar","type":"String"},{"name":"accessTokenExpiresAt","kind":"scalar","type":"DateTime"},{"name":"refreshTokenExpiresAt","kind":"scalar","type":"DateTime"},{"name":"scope","kind":"scalar","type":"String"},{"name":"password","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"account"},"Verification":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"identifier","kind":"scalar","type":"String"},{"name":"value","kind":"scalar","type":"String"},{"name":"expiresAt","kind":"scalar","type":"DateTime"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"verification"},"AvailabilitySlot":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"tutorProfileId","kind":"scalar","type":"String"},{"name":"startTime","kind":"scalar","type":"DateTime"},{"name":"endTime","kind":"scalar","type":"DateTime"},{"name":"isBooked","kind":"scalar","type":"Boolean"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"AvailabilitySlotToTutorProfile"},{"name":"booking","kind":"object","type":"Booking","relationName":"AvailabilitySlotToBooking"}],"dbName":null},"Booking":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"studentId","kind":"scalar","type":"String"},{"name":"tutorId","kind":"scalar","type":"String"},{"name":"tutorProfileId","kind":"scalar","type":"String"},{"name":"availabilityId","kind":"scalar","type":"String"},{"name":"status","kind":"enum","type":"BookingStatus"},{"name":"startTime","kind":"scalar","type":"DateTime"},{"name":"endTime","kind":"scalar","type":"DateTime"},{"name":"price","kind":"scalar","type":"Int"},{"name":"currency","kind":"scalar","type":"String"},{"name":"notes","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"student","kind":"object","type":"User","relationName":"StudentBookings"},{"name":"tutor","kind":"object","type":"User","relationName":"TutorBookings"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"TutorProfileBookings"},{"name":"availability","kind":"object","type":"AvailabilitySlot","relationName":"AvailabilitySlotToBooking"},{"name":"review","kind":"object","type":"Review","relationName":"BookingToReview"}],"dbName":null},"Category":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"slug","kind":"scalar","type":"String"},{"name":"isActive","kind":"scalar","type":"Boolean"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"tutors","kind":"object","type":"TutorCategory","relationName":"CategoryToTutorCategory"}],"dbName":null},"Payment":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"amount","kind":"scalar","type":"Float"},{"name":"transactionId","kind":"scalar","type":"String"},{"name":"stripeEventId","kind":"scalar","type":"String"},{"name":"status","kind":"enum","type":"PaymentStatus"},{"name":"invoiceUrl","kind":"scalar","type":"String"},{"name":"paymentGatewayData","kind":"scalar","type":"Json"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"subscriptionId","kind":"scalar","type":"String"},{"name":"subscription","kind":"object","type":"Subscription","relationName":"PaymentToSubscription"}],"dbName":"payments"},"Plan":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"slug","kind":"scalar","type":"String"},{"name":"description","kind":"scalar","type":"String"},{"name":"price","kind":"scalar","type":"Float"},{"name":"currency","kind":"scalar","type":"String"},{"name":"interval","kind":"enum","type":"BillingInterval"},{"name":"isActive","kind":"scalar","type":"Boolean"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"subscriptions","kind":"object","type":"Subscription","relationName":"PlanToSubscription"},{"name":"subscriptionHistories","kind":"object","type":"SubscriptionHistory","relationName":"PlanToSubscriptionHistory"}],"dbName":"plan"},"Post":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"title","kind":"scalar","type":"String"},{"name":"content","kind":"scalar","type":"String"},{"name":"thumbnail","kind":"scalar","type":"String"},{"name":"isFeatured","kind":"scalar","type":"Boolean"},{"name":"status","kind":"enum","type":"PostStatus"},{"name":"tags","kind":"scalar","type":"String"},{"name":"views","kind":"scalar","type":"Int"},{"name":"authorId","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"posts"},"Review":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"bookingId","kind":"scalar","type":"String"},{"name":"tutorProfileId","kind":"scalar","type":"String"},{"name":"studentId","kind":"scalar","type":"String"},{"name":"rating","kind":"scalar","type":"Int"},{"name":"comment","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"booking","kind":"object","type":"Booking","relationName":"BookingToReview"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"ReviewToTutorProfile"},{"name":"student","kind":"object","type":"User","relationName":"ReviewsGiven"}],"dbName":null},"Student":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"profilePhoto","kind":"scalar","type":"String"},{"name":"contactNumber","kind":"scalar","type":"String"},{"name":"address","kind":"scalar","type":"String"},{"name":"isDeleted","kind":"scalar","type":"Boolean"},{"name":"deletedAt","kind":"scalar","type":"DateTime"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"hasUsedTrial","kind":"scalar","type":"Boolean"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"StudentToUser"},{"name":"subscriptions","kind":"object","type":"Subscription","relationName":"StudentToSubscription"},{"name":"subscriptionHistories","kind":"object","type":"SubscriptionHistory","relationName":"StudentToSubscriptionHistory"}],"dbName":"student"},"Subscription":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"studentId","kind":"scalar","type":"String"},{"name":"planId","kind":"scalar","type":"String"},{"name":"paymentStatus","kind":"enum","type":"PaymentStatus"},{"name":"status","kind":"enum","type":"SubscriptionStatus"},{"name":"startDate","kind":"scalar","type":"DateTime"},{"name":"endDate","kind":"scalar","type":"DateTime"},{"name":"paymentProvider","kind":"scalar","type":"String"},{"name":"externalRef","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"student","kind":"object","type":"Student","relationName":"StudentToSubscription"},{"name":"plan","kind":"object","type":"Plan","relationName":"PlanToSubscription"},{"name":"payment","kind":"object","type":"Payment","relationName":"PaymentToSubscription"},{"name":"histories","kind":"object","type":"SubscriptionHistory","relationName":"SubscriptionToSubscriptionHistory"}],"dbName":"subscription"},"SubscriptionHistory":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"subscriptionId","kind":"scalar","type":"String"},{"name":"studentId","kind":"scalar","type":"String"},{"name":"planId","kind":"scalar","type":"String"},{"name":"status","kind":"enum","type":"SubscriptionStatus"},{"name":"paymentStatus","kind":"enum","type":"PaymentStatus"},{"name":"startDate","kind":"scalar","type":"DateTime"},{"name":"endDate","kind":"scalar","type":"DateTime"},{"name":"archivedAt","kind":"scalar","type":"DateTime"},{"name":"subscription","kind":"object","type":"Subscription","relationName":"SubscriptionToSubscriptionHistory"},{"name":"student","kind":"object","type":"Student","relationName":"StudentToSubscriptionHistory"},{"name":"plan","kind":"object","type":"Plan","relationName":"PlanToSubscriptionHistory"}],"dbName":"subscription_history"},"TutorProfile":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"userId","kind":"scalar","type":"String"},{"name":"bio","kind":"scalar","type":"String"},{"name":"headline","kind":"scalar","type":"String"},{"name":"hourlyRate","kind":"scalar","type":"Int"},{"name":"currency","kind":"scalar","type":"String"},{"name":"languages","kind":"scalar","type":"String"},{"name":"experienceYrs","kind":"scalar","type":"Int"},{"name":"education","kind":"scalar","type":"String"},{"name":"timezone","kind":"scalar","type":"String"},{"name":"isVerified","kind":"scalar","type":"Boolean"},{"name":"avgRating","kind":"scalar","type":"Float"},{"name":"reviewCount","kind":"scalar","type":"Int"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"user","kind":"object","type":"User","relationName":"TutorProfileToUser"},{"name":"categories","kind":"object","type":"TutorCategory","relationName":"TutorCategoryToTutorProfile"},{"name":"availability","kind":"object","type":"AvailabilitySlot","relationName":"AvailabilitySlotToTutorProfile"},{"name":"reviews","kind":"object","type":"Review","relationName":"ReviewToTutorProfile"},{"name":"bookings","kind":"object","type":"Booking","relationName":"TutorProfileBookings"}],"dbName":null},"TutorCategory":{"fields":[{"name":"tutorProfileId","kind":"scalar","type":"String"},{"name":"categoryId","kind":"scalar","type":"String"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"TutorCategoryToTutorProfile"},{"name":"category","kind":"object","type":"Category","relationName":"CategoryToTutorCategory"}],"dbName":null}},"enums":{},"types":{}}');
+config.runtimeDataModel = JSON.parse('{"models":{"User":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"email","kind":"scalar","type":"String"},{"name":"emailVerified","kind":"scalar","type":"Boolean"},{"name":"image","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"sessions","kind":"object","type":"Session","relationName":"SessionToUser"},{"name":"accounts","kind":"object","type":"Account","relationName":"AccountToUser"},{"name":"role","kind":"scalar","type":"String"},{"name":"phone","kind":"scalar","type":"String"},{"name":"status","kind":"scalar","type":"String"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"TutorProfileToUser"},{"name":"studentBookings","kind":"object","type":"Booking","relationName":"StudentBookings"},{"name":"tutorBookings","kind":"object","type":"Booking","relationName":"TutorBookings"},{"name":"reviewsGiven","kind":"object","type":"Review","relationName":"ReviewsGiven"},{"name":"subscriptions","kind":"object","type":"Subscription","relationName":"SubscriptionToUser"}],"dbName":"user"},"Session":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"expiresAt","kind":"scalar","type":"DateTime"},{"name":"token","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"ipAddress","kind":"scalar","type":"String"},{"name":"userAgent","kind":"scalar","type":"String"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"SessionToUser"}],"dbName":"session"},"Account":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"accountId","kind":"scalar","type":"String"},{"name":"providerId","kind":"scalar","type":"String"},{"name":"userId","kind":"scalar","type":"String"},{"name":"user","kind":"object","type":"User","relationName":"AccountToUser"},{"name":"accessToken","kind":"scalar","type":"String"},{"name":"refreshToken","kind":"scalar","type":"String"},{"name":"idToken","kind":"scalar","type":"String"},{"name":"accessTokenExpiresAt","kind":"scalar","type":"DateTime"},{"name":"refreshTokenExpiresAt","kind":"scalar","type":"DateTime"},{"name":"scope","kind":"scalar","type":"String"},{"name":"password","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"account"},"Verification":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"identifier","kind":"scalar","type":"String"},{"name":"value","kind":"scalar","type":"String"},{"name":"expiresAt","kind":"scalar","type":"DateTime"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"verification"},"AvailabilitySlot":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"tutorProfileId","kind":"scalar","type":"String"},{"name":"startTime","kind":"scalar","type":"DateTime"},{"name":"endTime","kind":"scalar","type":"DateTime"},{"name":"isBooked","kind":"scalar","type":"Boolean"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"AvailabilitySlotToTutorProfile"},{"name":"booking","kind":"object","type":"Booking","relationName":"AvailabilitySlotToBooking"}],"dbName":null},"Booking":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"studentId","kind":"scalar","type":"String"},{"name":"tutorId","kind":"scalar","type":"String"},{"name":"tutorProfileId","kind":"scalar","type":"String"},{"name":"availabilityId","kind":"scalar","type":"String"},{"name":"status","kind":"enum","type":"BookingStatus"},{"name":"startTime","kind":"scalar","type":"DateTime"},{"name":"endTime","kind":"scalar","type":"DateTime"},{"name":"price","kind":"scalar","type":"Int"},{"name":"currency","kind":"scalar","type":"String"},{"name":"notes","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"student","kind":"object","type":"User","relationName":"StudentBookings"},{"name":"tutor","kind":"object","type":"User","relationName":"TutorBookings"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"TutorProfileBookings"},{"name":"availability","kind":"object","type":"AvailabilitySlot","relationName":"AvailabilitySlotToBooking"},{"name":"review","kind":"object","type":"Review","relationName":"BookingToReview"}],"dbName":null},"Category":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"slug","kind":"scalar","type":"String"},{"name":"isActive","kind":"scalar","type":"Boolean"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"tutors","kind":"object","type":"TutorCategory","relationName":"CategoryToTutorCategory"}],"dbName":null},"Payment":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"amount","kind":"scalar","type":"Float"},{"name":"transactionId","kind":"scalar","type":"String"},{"name":"stripeEventId","kind":"scalar","type":"String"},{"name":"status","kind":"enum","type":"PaymentStatus"},{"name":"invoiceUrl","kind":"scalar","type":"String"},{"name":"paymentGatewayData","kind":"scalar","type":"Json"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"subscriptionId","kind":"scalar","type":"String"},{"name":"subscription","kind":"object","type":"Subscription","relationName":"PaymentToSubscription"}],"dbName":"payments"},"Plan":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"name","kind":"scalar","type":"String"},{"name":"slug","kind":"scalar","type":"String"},{"name":"description","kind":"scalar","type":"String"},{"name":"price","kind":"scalar","type":"Float"},{"name":"currency","kind":"scalar","type":"String"},{"name":"interval","kind":"enum","type":"BillingInterval"},{"name":"isActive","kind":"scalar","type":"Boolean"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"subscriptions","kind":"object","type":"Subscription","relationName":"PlanToSubscription"}],"dbName":"plan"},"Post":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"title","kind":"scalar","type":"String"},{"name":"content","kind":"scalar","type":"String"},{"name":"thumbnail","kind":"scalar","type":"String"},{"name":"isFeatured","kind":"scalar","type":"Boolean"},{"name":"status","kind":"enum","type":"PostStatus"},{"name":"tags","kind":"scalar","type":"String"},{"name":"views","kind":"scalar","type":"Int"},{"name":"authorId","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":"posts"},"Review":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"bookingId","kind":"scalar","type":"String"},{"name":"tutorProfileId","kind":"scalar","type":"String"},{"name":"studentId","kind":"scalar","type":"String"},{"name":"rating","kind":"scalar","type":"Int"},{"name":"comment","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"booking","kind":"object","type":"Booking","relationName":"BookingToReview"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"ReviewToTutorProfile"},{"name":"student","kind":"object","type":"User","relationName":"ReviewsGiven"}],"dbName":null},"Subscription":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"studentId","kind":"scalar","type":"String"},{"name":"planId","kind":"scalar","type":"String"},{"name":"paymentStatus","kind":"enum","type":"PaymentStatus"},{"name":"status","kind":"enum","type":"SubscriptionStatus"},{"name":"startDate","kind":"scalar","type":"DateTime"},{"name":"endDate","kind":"scalar","type":"DateTime"},{"name":"paymentProvider","kind":"scalar","type":"String"},{"name":"externalRef","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"student","kind":"object","type":"User","relationName":"SubscriptionToUser"},{"name":"plan","kind":"object","type":"Plan","relationName":"PlanToSubscription"},{"name":"payment","kind":"object","type":"Payment","relationName":"PaymentToSubscription"}],"dbName":"subscription"},"TutorProfile":{"fields":[{"name":"id","kind":"scalar","type":"String"},{"name":"userId","kind":"scalar","type":"String"},{"name":"bio","kind":"scalar","type":"String"},{"name":"headline","kind":"scalar","type":"String"},{"name":"hourlyRate","kind":"scalar","type":"Int"},{"name":"currency","kind":"scalar","type":"String"},{"name":"languages","kind":"scalar","type":"String"},{"name":"experienceYrs","kind":"scalar","type":"Int"},{"name":"education","kind":"scalar","type":"String"},{"name":"timezone","kind":"scalar","type":"String"},{"name":"isVerified","kind":"scalar","type":"Boolean"},{"name":"avgRating","kind":"scalar","type":"Float"},{"name":"reviewCount","kind":"scalar","type":"Int"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"},{"name":"user","kind":"object","type":"User","relationName":"TutorProfileToUser"},{"name":"categories","kind":"object","type":"TutorCategory","relationName":"TutorCategoryToTutorProfile"},{"name":"availability","kind":"object","type":"AvailabilitySlot","relationName":"AvailabilitySlotToTutorProfile"},{"name":"reviews","kind":"object","type":"Review","relationName":"ReviewToTutorProfile"},{"name":"bookings","kind":"object","type":"Booking","relationName":"TutorProfileBookings"}],"dbName":null},"TutorCategory":{"fields":[{"name":"tutorProfileId","kind":"scalar","type":"String"},{"name":"categoryId","kind":"scalar","type":"String"},{"name":"tutorProfile","kind":"object","type":"TutorProfile","relationName":"TutorCategoryToTutorProfile"},{"name":"category","kind":"object","type":"Category","relationName":"CategoryToTutorCategory"}],"dbName":null}},"enums":{},"types":{}}');
 async function decodeBase64AsWasm(wasmBase64) {
   const { Buffer: Buffer2 } = await import("buffer");
   const wasmArray = Buffer2.from(wasmBase64, "base64");
@@ -83,8 +83,6 @@ __export(prismaNamespace_exports, {
   SessionScalarFieldEnum: () => SessionScalarFieldEnum,
   SortOrder: () => SortOrder,
   Sql: () => Sql2,
-  StudentScalarFieldEnum: () => StudentScalarFieldEnum,
-  SubscriptionHistoryScalarFieldEnum: () => SubscriptionHistoryScalarFieldEnum,
   SubscriptionScalarFieldEnum: () => SubscriptionScalarFieldEnum,
   TransactionIsolationLevel: () => TransactionIsolationLevel,
   TutorCategoryScalarFieldEnum: () => TutorCategoryScalarFieldEnum,
@@ -136,9 +134,7 @@ var ModelName = {
   Plan: "Plan",
   Post: "Post",
   Review: "Review",
-  Student: "Student",
   Subscription: "Subscription",
-  SubscriptionHistory: "SubscriptionHistory",
   TutorProfile: "TutorProfile",
   TutorCategory: "TutorCategory"
 };
@@ -270,20 +266,6 @@ var ReviewScalarFieldEnum = {
   comment: "comment",
   createdAt: "createdAt"
 };
-var StudentScalarFieldEnum = {
-  id: "id",
-  name: "name",
-  email: "email",
-  profilePhoto: "profilePhoto",
-  contactNumber: "contactNumber",
-  address: "address",
-  isDeleted: "isDeleted",
-  deletedAt: "deletedAt",
-  createdAt: "createdAt",
-  updatedAt: "updatedAt",
-  hasUsedTrial: "hasUsedTrial",
-  userId: "userId"
-};
 var SubscriptionScalarFieldEnum = {
   id: "id",
   studentId: "studentId",
@@ -296,17 +278,6 @@ var SubscriptionScalarFieldEnum = {
   externalRef: "externalRef",
   createdAt: "createdAt",
   updatedAt: "updatedAt"
-};
-var SubscriptionHistoryScalarFieldEnum = {
-  id: "id",
-  subscriptionId: "subscriptionId",
-  studentId: "studentId",
-  planId: "planId",
-  status: "status",
-  paymentStatus: "paymentStatus",
-  startDate: "startDate",
-  endDate: "endDate",
-  archivedAt: "archivedAt"
 };
 var TutorProfileScalarFieldEnum = {
   id: "id",
@@ -1641,19 +1612,12 @@ import Stripe2 from "stripe";
 
 // src/modules/payment/payment.service.ts
 var handlerStripeWebhookEvent = async (event) => {
-  const existingPayment = await prisma.payment.findFirst({
-    where: { stripeEventId: event.id }
-  });
-  if (existingPayment) {
-    console.log(`Event ${event.id} already processed. Skipping`);
-    return { message: `Event ${event.id} already processed. Skipping` };
-  }
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object;
-      const bookingId = session.metadata?.bookingId;
+      const subscriptionId = session.metadata?.subscriptionId;
       const paymentId = session.metadata?.paymentId;
-      if (!bookingId || !paymentId) {
+      if (!subscriptionId || !paymentId) {
         console.error("Missing bookingId/paymentId metadata in checkout.session.completed");
         return { message: "Missing bookingId/paymentId metadata" };
       }
@@ -1661,35 +1625,40 @@ var handlerStripeWebhookEvent = async (event) => {
         where: { id: paymentId },
         select: {
           id: true,
-          BookingId: true
+          subscriptionId: true,
+          status: true
         }
       });
       if (!payment) {
         console.error(`Payment ${paymentId} not found`);
         return { message: "Payment not found" };
       }
-      if (payment.BookingId !== bookingId) {
-        console.error(`Payment ${paymentId} is not linked to booking ${bookingId}`);
+      if (payment.subscriptionId !== subscriptionId) {
+        console.error(`Payment ${paymentId} is not linked to booking ${subscriptionId}`);
         return { message: "Payment/booking mismatch" };
       }
       const isPaid = session.payment_status === "paid";
+      if (payment.status === "PAID") {
+        console.log(`Payment ${paymentId} already marked as PAID. Skipping duplicate webhook processing.`);
+        return { message: `Payment ${paymentId} already processed` };
+      }
       await prisma.$transaction(async (tx) => {
         await tx.payment.update({
           where: { id: payment.id },
           data: {
             status: isPaid ? "PAID" : "UNPAID",
-            paymentGatewayData: session,
-            stripeEventId: event.id
+            paymentGatewayData: session
           }
         });
-        await tx.booking.update({
-          where: { id: bookingId },
+        await tx.subscription.update({
+          where: { id: subscriptionId },
           data: {
-            paymentStatus: isPaid ? "PAID" : "UNPAID"
+            paymentStatus: isPaid ? "PAID" : "UNPAID",
+            status: isPaid ? "ACTIVE" : "PAST_DUE"
           }
         });
       });
-      console.log(`Payment ${session.payment_status} for booking ${bookingId}`);
+      console.log(`Payment ${session.payment_status} for booking ${subscriptionId}`);
       break;
     }
     case "checkout.session.expired": {
@@ -1869,6 +1838,465 @@ router9.post(
 );
 var planRoutes = router9;
 
+// src/modules/subscriptions/subscription.route.ts
+import { Router as Router10 } from "express";
+
+// src/modules/subscriptions/subscription.service.ts
+import { randomUUID as randomUUID2 } from "crypto";
+import Stripe3 from "stripe";
+var stripeClient3 = null;
+var getStripeClient3 = () => {
+  if (stripeClient3) return stripeClient3;
+  const secret = process.env.STRIPE_SECRET_KEY;
+  if (!secret) {
+    throw new Error("Stripe is not configured. Set STRIPE_SECRET_KEY in environment variables.");
+  }
+  stripeClient3 = new Stripe3(secret);
+  return stripeClient3;
+};
+var SubscriptionService = {
+  create: async (studentId, planId) => {
+    if (!planId) throw new Error("planId is required");
+    const plan = await prisma.plan.findUnique({
+      where: { id: planId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        price: true,
+        currency: true,
+        interval: true,
+        isActive: true
+      }
+    });
+    if (!plan) throw new Error("Plan not found");
+    if (!plan.isActive) throw new Error("Plan is not active");
+    const existingActive = await prisma.subscription.findFirst({
+      where: {
+        studentId,
+        status: "ACTIVE"
+      }
+    });
+    if (existingActive) {
+      throw new Error("Student already has an active subscription");
+    }
+    const existingPending = await prisma.subscription.findFirst({
+      where: {
+        studentId,
+        planId,
+        status: "PENDING"
+      },
+      select: {
+        id: true,
+        studentId: true,
+        planId: true,
+        status: true,
+        paymentStatus: true,
+        startDate: true,
+        endDate: true,
+        paymentProvider: true,
+        externalRef: true,
+        createdAt: true,
+        plan: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            price: true,
+            currency: true,
+            interval: true,
+            isActive: true
+          }
+        },
+        payment: {
+          select: {
+            id: true,
+            amount: true,
+            transactionId: true,
+            status: true,
+            invoiceUrl: true,
+            paymentGatewayData: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+    if (existingPending) {
+      return existingPending;
+    }
+    return prisma.$transaction(async (tx) => {
+      const subscription = await tx.subscription.create({
+        data: {
+          studentId,
+          planId,
+          status: "PENDING",
+          paymentStatus: "UNPAID",
+          startDate: null,
+          endDate: null
+        },
+        select: {
+          id: true,
+          studentId: true,
+          planId: true,
+          status: true,
+          paymentStatus: true,
+          startDate: true,
+          endDate: true,
+          paymentProvider: true,
+          externalRef: true,
+          createdAt: true
+        }
+      });
+      const payment = await tx.payment.create({
+        data: {
+          subscriptionId: subscription.id,
+          amount: plan.price,
+          transactionId: randomUUID2(),
+          status: "UNPAID"
+        },
+        select: {
+          id: true,
+          amount: true,
+          transactionId: true,
+          status: true,
+          invoiceUrl: true,
+          createdAt: true
+        }
+      });
+      return {
+        ...subscription,
+        payment
+      };
+    });
+  },
+  initiatePayment: async (studentId, subscriptionId) => {
+    const subscription = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      select: {
+        id: true,
+        studentId: true,
+        status: true,
+        plan: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            price: true,
+            currency: true,
+            interval: true,
+            isActive: true
+          }
+        },
+        payment: {
+          select: {
+            id: true,
+            status: true
+          }
+        }
+      }
+    });
+    if (!subscription) throw new Error("Subscription not found");
+    if (subscription.studentId !== studentId) throw new Error("Forbidden");
+    if (!subscription.plan) throw new Error("Plan not found");
+    if (!subscription.plan.isActive) throw new Error("Plan is not active");
+    if (!subscription.payment) throw new Error("Payment record not found");
+    if (subscription.payment.status === "PAID") {
+      throw new Error("Payment already completed for this subscription");
+    }
+    if (subscription.status === "CANCELLED") {
+      throw new Error("Subscription is cancelled");
+    }
+    const stripe = getStripeClient3();
+    const frontendUrl = process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:3000";
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "BDT".toLowerCase(),
+            product_data: {
+              name: `Session with ${subscription.plan?.name}`
+            },
+            unit_amount: subscription.plan?.price * 100
+          },
+          quantity: 1
+        }
+      ],
+      metadata: {
+        subscriptionId: subscription.id,
+        paymentId: subscription.payment.id
+      },
+      success_url: `${frontendUrl}/dashboard/payment/payment-success?subscription_id=${subscription.id}&payment_id=${subscription.payment.id}`,
+      cancel_url: `${frontendUrl}/dashboard/bookings?error=payment_cancelled`
+    });
+    return {
+      paymentUrl: session.url,
+      sessionId: session.id
+    };
+  },
+  list: async (studentId, role) => {
+    const where = role === "admin" ? {} : { studentId };
+    return prisma.subscription.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        status: true,
+        paymentStatus: true,
+        startDate: true,
+        endDate: true,
+        paymentProvider: true,
+        externalRef: true,
+        createdAt: true,
+        student: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        plan: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            price: true,
+            currency: true,
+            interval: true
+          }
+        },
+        payment: {
+          select: {
+            id: true,
+            amount: true,
+            transactionId: true,
+            status: true,
+            invoiceUrl: true,
+            paymentGatewayData: true
+          }
+        }
+      }
+    });
+  },
+  getMyActive: async (studentId) => {
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        studentId,
+        status: "ACTIVE"
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        status: true,
+        paymentStatus: true,
+        startDate: true,
+        endDate: true,
+        paymentProvider: true,
+        externalRef: true,
+        createdAt: true,
+        plan: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            price: true,
+            currency: true,
+            interval: true
+          }
+        },
+        payment: {
+          select: {
+            id: true,
+            amount: true,
+            transactionId: true,
+            status: true,
+            invoiceUrl: true,
+            paymentGatewayData: true
+          }
+        }
+      }
+    });
+    if (!subscription) throw new Error("No active subscription found");
+    return subscription;
+  },
+  cancel: async (studentId, subscriptionId) => {
+    const subscription = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      select: {
+        id: true,
+        studentId: true,
+        status: true,
+        paymentStatus: true,
+        payment: {
+          select: {
+            id: true,
+            status: true
+          }
+        }
+      }
+    });
+    if (!subscription) throw new Error("Subscription not found");
+    if (subscription.studentId !== studentId) throw new Error("Forbidden");
+    if (subscription.status !== "ACTIVE" && subscription.status !== "PENDING") {
+      throw new Error("Only active or pending subscriptions can be cancelled");
+    }
+    return prisma.$transaction(async (tx) => {
+      if (subscription.payment && subscription.payment.status === "UNPAID") {
+        await tx.payment.update({
+          where: { id: subscription.payment.id },
+          data: {
+            status: "UNPAID"
+          }
+        });
+      }
+      return tx.subscription.update({
+        where: { id: subscriptionId },
+        data: {
+          status: "CANCELLED",
+          paymentStatus: subscription.paymentStatus === "PAID" ? "PAID" : "UNPAID"
+        },
+        select: {
+          id: true,
+          status: true,
+          paymentStatus: true,
+          startDate: true,
+          endDate: true
+        }
+      });
+    });
+  }
+};
+
+// src/modules/subscriptions/subscription.controller.ts
+var SubscriptionController = {
+  create: async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+      const { planId } = req.body;
+      if (!planId) {
+        return res.status(400).json({
+          success: false,
+          message: "planId is required"
+        });
+      }
+      const subscription = await SubscriptionService.create(req.user.id, planId);
+      return res.status(201).json({
+        success: true,
+        message: "Subscription created successfully",
+        data: subscription
+      });
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: e.message ?? "Failed to create subscription"
+      });
+    }
+  },
+  initiatePayment: async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+      const subscriptionId = req.params.id;
+      if (!subscriptionId) {
+        return res.status(400).json({
+          success: false,
+          message: "subscriptionId is required"
+        });
+      }
+      const data = await SubscriptionService.initiatePayment(req.user.id, subscriptionId);
+      return res.json({
+        success: true,
+        message: "Payment initiated",
+        data
+      });
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: e.message ?? "Payment initiation failed"
+      });
+    }
+  },
+  listMineOrAll: async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+      const items = await SubscriptionService.list(req.user.id, req.user.role);
+      return res.json({
+        success: true,
+        data: { items }
+      });
+    } catch (e) {
+      return res.status(500).json({
+        success: false,
+        message: e.message ?? "Failed to load subscriptions"
+      });
+    }
+  },
+  getMyActive: async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+      const subscription = await SubscriptionService.getMyActive(req.user.id);
+      return res.json({
+        success: true,
+        data: subscription
+      });
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: e.message ?? "Failed to load active subscription"
+      });
+    }
+  },
+  cancel: async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+      const subscriptionId = req.params.id;
+      if (!subscriptionId) {
+        return res.status(400).json({
+          success: false,
+          message: "subscriptionId is required"
+        });
+      }
+      const updated = await SubscriptionService.cancel(req.user.id, subscriptionId);
+      return res.json({
+        success: true,
+        message: "Subscription cancelled successfully",
+        data: updated
+      });
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: e.message ?? "Cancel failed"
+      });
+    }
+  }
+};
+
+// src/modules/subscriptions/subscription.route.ts
+var router10 = Router10();
+router10.post("/", auth_default("student" /* STUDENT */), SubscriptionController.create);
+router10.post("/:id/initiate-payment", auth_default("student" /* STUDENT */), SubscriptionController.initiatePayment);
+router10.get("/", auth_default("student" /* STUDENT */), SubscriptionController.listMineOrAll);
+router10.get("/active", auth_default("student" /* STUDENT */), SubscriptionController.getMyActive);
+router10.patch("/:id/cancel", auth_default("student" /* STUDENT */), SubscriptionController.cancel);
+var subsriptionRotes = router10;
+
 // src/app.ts
 var app = express();
 app.post("/webhook", express.raw({ type: "application/json" }), PaymentController.handleStripeWebhookEvent);
@@ -1902,6 +2330,7 @@ app.use(
 app.use(express.json());
 app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use("/api/plans", planRoutes);
+app.use("/api/subscriptions", subsriptionRotes);
 app.use("/api/bookings", bookingRouter);
 app.use("/api/tutor-profile", profileRouter);
 app.use("/api/categories", categoriesRoutes);
