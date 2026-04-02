@@ -38,6 +38,8 @@
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^7.0.12",
     "pg": "^8.16.3",
-    "stripe": "^21.0.1"
+    "stripe": "^21.0.1",
+     "http-status": "^2.1.0",
+      "zod": "^4.3.6"
   }
 }

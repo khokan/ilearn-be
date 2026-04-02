@@ -18,6 +18,7 @@ model User {
     studentBookings Booking[] @relation("StudentBookings")
     tutorBookings   Booking[] @relation("TutorBookings")
     reviewsGiven    Review[]  @relation("ReviewsGiven")
+    subscriptions    Subscription[]
 
     @@index([role])
     @@index([status])

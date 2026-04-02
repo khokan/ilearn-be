@@ -13,6 +13,8 @@ import { notFound } from "./middlewares/notFound";
 import errorHandler from "./middlewares/globalErrorHandler";
 import { userRouter } from "./modules/users/users.route";
 import { PaymentController } from "./modules/payment/payment.controller";
+import { planRoutes } from "./modules/plans/plan.route";
+import { subsriptionRotes } from "./modules/subscriptions/subscription.route";
 
 
 
@@ -59,6 +61,10 @@ app.use(
 app.use(express.json());
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
+
+app.use("/api/plans", planRoutes);
+
+app.use("/api/subscriptions", subsriptionRotes);
 
 app.use("/api/bookings", bookingRouter);
 

@@ -15,10 +15,10 @@ const handlerStripeWebhookEvent = async (event: Stripe.Event) => {
     switch (event.type) {
         case "checkout.session.completed": {
             const session = event.data.object as any;
-            const bookingId = session.metadata?.bookingId;
+            const subscriptionId = session.metadata?.subscriptionId;
             const paymentId = session.metadata?.paymentId;
 
-            if (!bookingId || !paymentId) {
+            if (!subscriptionId || !paymentId) {
                 console.error("Missing bookingId/paymentId metadata in checkout.session.completed");
                 return { message: "Missing bookingId/paymentId metadata" };
             }
@@ -27,7 +27,7 @@ const handlerStripeWebhookEvent = async (event: Stripe.Event) => {
                 where: { id: paymentId },
                 select: {
                     id: true,
-                    BookingId: true,
+                    subscriptionId: true,
                 },
             });
 
@@ -36,8 +36,8 @@ const handlerStripeWebhookEvent = async (event: Stripe.Event) => {
                 return { message: "Payment not found" };
             }
 
-            if (payment.BookingId !== bookingId) {
-                console.error(`Payment ${paymentId} is not linked to booking ${bookingId}`);
+            if (payment.subscriptionId !== subscriptionId) {
+                console.error(`Payment ${paymentId} is not linked to booking ${subscriptionId}`);
                 return { message: "Payment/booking mismatch" };
             }
 
@@ -54,15 +54,15 @@ const handlerStripeWebhookEvent = async (event: Stripe.Event) => {
                     },
                 });
 
-                await tx.booking.update({
-                    where: { id: bookingId },
+                await tx.subscription.update({
+                    where: { id: subscriptionId },
                     data: {
                         paymentStatus: isPaid ? "PAID" : "UNPAID",
                     },
                 });
             });
 
-            console.log(`Payment ${session.payment_status} for booking ${bookingId}`);
+            console.log(`Payment ${session.payment_status} for booking ${subscriptionId}`);
             break;
         }
 

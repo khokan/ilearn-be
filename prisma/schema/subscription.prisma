@@ -1,0 +1,24 @@
+model Subscription {
+  id                 String              @id @default(cuid())
+  studentId          String
+  planId             String
+  paymentStatus      PaymentStatus     @default(UNPAID)
+  status             SubscriptionStatus  @default(PENDING)
+  startDate          DateTime?
+  endDate            DateTime?
+  paymentProvider    String?
+  externalRef        String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  student            User             @relation(fields: [studentId], references: [id])
+  plan               Plan                @relation(fields: [planId], references: [id])
+  payment           Payment?
+
+  @@index([studentId])
+  @@index([planId])
+  @@index([status])
+  @@map("subscription")
+
+}
+

@@ -5,7 +5,6 @@ model Booking {
   tutorProfileId  String
   availabilityId  String?       @unique
   status          BookingStatus @default(CONFIRMED)
-  paymentStatus   PaymentStatus     @default(UNPAID)
 
   // Session details
   startTime       DateTime
@@ -24,7 +23,6 @@ model Booking {
 
   availability    AvailabilitySlot? @relation(fields: [availabilityId], references: [id], onDelete: SetNull)
   review          Review?
-  payment         Payment?
 
   @@index([studentId, createdAt])
   @@index([tutorId, createdAt])

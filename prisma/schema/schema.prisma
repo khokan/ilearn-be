@@ -34,3 +34,19 @@ enum PaymentStatus {
   PAID
   UNPAID
 }
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+  TRIAL
+}
+
+enum BillingInterval {
+  DAILY
+  MONTHLY
+  YEARLY
+  LIFETIME
+}

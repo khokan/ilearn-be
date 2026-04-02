@@ -9,10 +9,10 @@ model Payment {
     createdAt          DateTime      @default(now())
     updatedAt          DateTime      @updatedAt
 
-    BookingId String      @unique
-    booking   Booking @relation(fields: [BookingId], references: [id], onDelete: Cascade)
-
-    @@index([BookingId])
+    subscriptionId     String      @unique
+    subscription       Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+   
+    @@index([subscriptionId])
     @@index([transactionId])
     @@map("payments")
 }
