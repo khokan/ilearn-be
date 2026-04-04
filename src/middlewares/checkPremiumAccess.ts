@@ -11,25 +11,15 @@ export const checkPremiumAccess = async (req: Request, res: Response, next: Next
     }
 
     // Admins are not gated by student subscription checks.
-    if (req.user.role === Role.ADMIN || req.user.role === Role.SUPER_ADMIN) {
+    if (req.user.role === Role.ADMIN) {
       return next();
-    }
-
-    const student = await prisma.student.findUnique({
-      where: {
-        email: req.user.email,
-      },
-    });
-
-    if (!student) {
-      throw new AppError(status.NOT_FOUND, "Student not found");
     }
 
     const now = new Date();
 
     const activePaidSubscription = await prisma.subscription.findFirst({
       where: {
-        studentId: student.id,
+        studentId: req.user.id,
         AND: [
           {
             OR: [

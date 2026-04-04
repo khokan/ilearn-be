@@ -2,18 +2,18 @@ import { Role } from "../../generated/prisma/enums";
 import { auth } from "../lib/auth";
 import { prisma } from "../lib/prisma";
 
-const email = process.env.SUPER_ADMIN_EMAIL;
-const password = process.env.SUPER_ADMIN_PASSWORD;
+const email = process.env.ADMIN_EMAIL;
+const password = process.env.ADMIN_PASSWORD;
 
 if (!email || !password) {
-  throw new Error("Missing SUPER_ADMIN_EMAIL or SUPER_ADMIN_PASSWORD in env");
+  throw new Error("Missing ADMIN_EMAIL or ADMIN_PASSWORD in env");
 }
 
 export const seedSuperAdmin = async () => {
     try {
         const isSuperAdminExist = await prisma.user.findFirst({
             where:{
-                role : Role.SUPER_ADMIN
+                role : Role.ADMIN
             }
         })
 
@@ -26,8 +26,8 @@ export const seedSuperAdmin = async () => {
             body:{
                 email : email,
                 password : password,
-                name : "Super Admin",
-                role : Role.SUPER_ADMIN,
+                name : "Admin",
+                role : Role.ADMIN,
                 rememberMe : false,
             }
         })

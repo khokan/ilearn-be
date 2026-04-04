@@ -14,10 +14,6 @@ model User {
     status String? @default("ACTIVE")
 
     // Relations
-    tutorProfile TutorProfile?
-    studentBookings Booking[] @relation("StudentBookings")
-    tutorBookings   Booking[] @relation("TutorBookings")
-    reviewsGiven    Review[]  @relation("ReviewsGiven")
     subscriptions    Subscription[]
 
     @@index([role])

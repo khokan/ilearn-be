@@ -11,7 +11,7 @@ export const auth = betterAuth({
     additionalFields: {
       role: {
         type: "string",
-        defaultValue: "USER",
+        defaultValue: "STUDENT",
         required: false,
       },
       phone: {
@@ -30,6 +30,14 @@ export const auth = betterAuth({
     enabled: true,
     autoSignIn: true,               // important so newSession exists
     requireEmailVerification: false,
+  },
+
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      prompt: "select_account",
+    },
   },
 
   hooks: {

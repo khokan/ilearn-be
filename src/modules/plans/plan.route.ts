@@ -10,7 +10,7 @@ const router = Router();
 router.get("/", PlanController.getPlans);
 router.post(
   "/",
-  auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  auth(UserRole.ADMIN),
   validateRequest(createPlanSchema),
   PlanController.createPlan
 );
