@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma";
 
 let stripeClient: Stripe | null = null;
 
+// Returns a memoized Stripe client instance for payment session creation.
 const getStripeClient = () => {
   if (stripeClient) return stripeClient;
 
@@ -16,18 +17,14 @@ const getStripeClient = () => {
   return stripeClient;
 };
 
-const calculateEndDate = (
+// Calculates the end date from a start date and billing interval.
+const calculateEndDateFromStart = (
+  startDate: Date,
   interval: "DAILY" | "MONTHLY" | "YEARLY" | "LIFETIME"
 ) => {
-  const now = new Date();
+  if (interval === "LIFETIME") return null;
 
-  if (interval === "LIFETIME") {
-    const lifetimeDate = new Date(now);
-    lifetimeDate.setFullYear(lifetimeDate.getFullYear() + 100);
-    return lifetimeDate;
-  }
-
-  const endDate = new Date(now);
+  const endDate = new Date(startDate);
 
   if (interval === "DAILY") {
     endDate.setDate(endDate.getDate() + 1);
@@ -40,7 +37,57 @@ const calculateEndDate = (
   return endDate;
 };
 
+// Resolves the effective end date for an active subscription.
+const getEffectiveEndDate = (subscription: {
+  startDate: Date | null;
+  endDate: Date | null;
+  plan: { interval: "DAILY" | "MONTHLY" | "YEARLY" | "LIFETIME" } | null;
+}) => {
+  if (subscription.endDate) return subscription.endDate;
+  if (!subscription.startDate || !subscription.plan) return null;
+
+  return calculateEndDateFromStart(subscription.startDate, subscription.plan.interval);
+};
+
+// Marks subscriptions as expired once their effective end date has passed.
+const expireDueSubscriptions = async (studentId?: string) => {
+  const activeSubscriptions = await prisma.subscription.findMany({
+    where: {
+      status: {
+        in: ["ACTIVE", "PENDING", "TRIAL"],
+      },
+      ...(studentId ? { studentId } : {}),
+    },
+    select: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      plan: {
+        select: {
+          interval: true,
+        },
+      },
+    },
+  });
+
+  const now = new Date();
+  const expiredIds = activeSubscriptions
+    .filter((subscription) => {
+      const effectiveEndDate = getEffectiveEndDate(subscription);
+      return effectiveEndDate ? now > effectiveEndDate : false;
+    })
+    .map((subscription) => subscription.id);
+
+  if (!expiredIds.length) return;
+
+  await prisma.subscription.updateMany({
+    where: { id: { in: expiredIds } },
+    data: { status: "EXPIRED" },
+  });
+};
+
 export const SubscriptionService = {
+  // Creates a pending subscription and its payment record for the selected plan.
   create: async (studentId: string, planId: string) => {
     if (!planId) throw new Error("planId is required");
 
@@ -60,6 +107,8 @@ export const SubscriptionService = {
 
     if (!plan) throw new Error("Plan not found");
     if (!plan.isActive) throw new Error("Plan is not active");
+
+    await expireDueSubscriptions(studentId);
 
     const existingActive = await prisma.subscription.findFirst({
       where: {
@@ -120,8 +169,20 @@ export const SubscriptionService = {
     });
 
     if (existingPending) {
-      return existingPending;
+      const effectiveEndDate = getEffectiveEndDate(existingPending);
+
+      if (effectiveEndDate && new Date() > effectiveEndDate) {
+        await prisma.subscription.update({
+          where: { id: existingPending.id },
+          data: { status: "EXPIRED" },
+        });
+      } else {
+        return existingPending;
+      }
     }
+
+    const startDate = new Date();
+    const endDate = calculateEndDateFromStart(startDate, plan.interval);
 
     return prisma.$transaction(async (tx) => {
       const subscription = await tx.subscription.create({
@@ -130,8 +191,8 @@ export const SubscriptionService = {
           planId,
           status: "PENDING",
           paymentStatus: "UNPAID",
-          startDate: null,
-          endDate: null,
+          startDate,
+          endDate,
         },
         select: {
           id: true,
@@ -171,7 +232,10 @@ export const SubscriptionService = {
     });
   },
 
+  // Creates a Stripe checkout session for the subscription payment.
   initiatePayment: async (studentId: string, subscriptionId: string) => {
+    await expireDueSubscriptions(studentId);
+
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
       select: {
@@ -210,8 +274,11 @@ export const SubscriptionService = {
     if (subscription.status === "CANCELLED") {
       throw new Error("Subscription is cancelled");
     }
+    if (subscription.status === "EXPIRED") {
+      throw new Error("Subscription has expired");
+    }
 
-     const stripe = getStripeClient();
+    const stripe = getStripeClient();
     const frontendUrl = process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:3000";
 
     const session = await stripe.checkout.sessions.create({
@@ -220,11 +287,11 @@ export const SubscriptionService = {
       line_items: [
         {
           price_data: {
-            currency: ("BDT").toLowerCase(),
+            currency: "bdt",
             product_data: {
-              name: `Session with ${subscription.plan?.name}`,
+              name: `Subscription with ${subscription.plan.name}`,
             },
-            unit_amount: subscription.plan?.price * 100,
+            unit_amount: subscription.plan.price * 100,
           },
           quantity: 1,
         },
@@ -237,15 +304,16 @@ export const SubscriptionService = {
       cancel_url: `${frontendUrl}/dashboard/bookings?error=payment_cancelled`,
     });
 
-   
     return {
       paymentUrl: session.url,
       sessionId: session.id,
     };
   },
 
-
+  // Returns subscriptions for the current user, or all subscriptions for admins.
   list: async (studentId: string, role: string) => {
+    await expireDueSubscriptions(role === "admin" ? undefined : studentId);
+
     const where = role === "admin" ? {} : { studentId };
 
     return prisma.subscription.findMany({
@@ -291,7 +359,10 @@ export const SubscriptionService = {
     });
   },
 
+  // Returns the latest active subscription for the student.
   getMyActive: async (studentId: string) => {
+    await expireDueSubscriptions(studentId);
+
     const subscription = await prisma.subscription.findFirst({
       where: {
         studentId,
@@ -335,6 +406,7 @@ export const SubscriptionService = {
     return subscription;
   },
 
+  // Cancels an active or pending subscription owned by the student.
   cancel: async (studentId: string, subscriptionId: string) => {
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
@@ -359,15 +431,6 @@ export const SubscriptionService = {
     }
 
     return prisma.$transaction(async (tx) => {
-      if (subscription.payment && subscription.payment.status === "UNPAID") {
-        await tx.payment.update({
-          where: { id: subscription.payment.id },
-          data: {
-            status: "UNPAID",
-          },
-        });
-      }
-
       return tx.subscription.update({
         where: { id: subscriptionId },
         data: {
