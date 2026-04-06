@@ -312,9 +312,10 @@ export const SubscriptionService = {
 
   // Returns subscriptions for the current user, or all subscriptions for admins.
   list: async (studentId: string, role: string) => {
-    await expireDueSubscriptions(role === "admin" ? undefined : studentId);
+    const isAdmin = role === "ADMIN";
+    await expireDueSubscriptions(isAdmin ? undefined : studentId);
 
-    const where = role === "admin" ? {} : { studentId };
+    const where = isAdmin ? {} : { studentId };
 
     return prisma.subscription.findMany({
       where,
@@ -407,7 +408,7 @@ export const SubscriptionService = {
   },
 
   // Cancels an active or pending subscription owned by the student.
-  cancel: async (studentId: string, subscriptionId: string) => {
+  cancel: async (requesterId: string, subscriptionId: string, requesterRole: string) => {
     const subscription = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
       select: {
@@ -425,7 +426,9 @@ export const SubscriptionService = {
     });
 
     if (!subscription) throw new Error("Subscription not found");
-    if (subscription.studentId !== studentId) throw new Error("Forbidden");
+    if (requesterRole !== "ADMIN" && subscription.studentId !== requesterId) {
+      throw new Error("Forbidden");
+    }
     if (subscription.status !== "ACTIVE" && subscription.status !== "PENDING") {
       throw new Error("Only active or pending subscriptions can be cancelled");
     }

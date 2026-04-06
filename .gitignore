@@ -10,5 +10,5 @@ migrations
 .vercel
 
 .vercel
-index.mjs
 .vercel
+api/index.mjs

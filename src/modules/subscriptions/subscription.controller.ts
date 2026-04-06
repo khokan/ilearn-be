@@ -38,7 +38,7 @@ export const SubscriptionController = {
         return res.status(401).json({ success: false, message: "Unauthorized" });
       }
 
-      const subscriptionId = req.params.id;
+      const subscriptionId = String(req.params.id);
 
       if (!subscriptionId) {
         return res.status(400).json({
@@ -108,7 +108,7 @@ export const SubscriptionController = {
         return res.status(401).json({ success: false, message: "Unauthorized" });
       }
 
-      const subscriptionId = req.params.id;
+      const subscriptionId = String(req.params.id);
 
       if (!subscriptionId) {
         return res.status(400).json({
@@ -117,7 +117,7 @@ export const SubscriptionController = {
         });
       }
 
-      const updated = await SubscriptionService.cancel(req.user.id, subscriptionId);
+      const updated = await SubscriptionService.cancel(req.user.id, subscriptionId, req.user.role);
 
       return res.json({
         success: true,
