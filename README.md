@@ -18,12 +18,15 @@
 
 **iLearning Backend** is a subscription-based learning platform backend application built with **Express.js**, **PostgreSQL**, and **Prisma ORM**. The system manages student subscriptions, billing plans, and payment processing through Stripe integration.
 
+It also uses the **Genkit API** to generate AI-powered quiz questions for the learning module.
+
 ### Key Capabilities
 - Student registration and authentication
 - Subscription plan management
 - Payment processing and webhook handling
 - Role-based access control
 - Premium content access management
+- AI quiz question generation using Genkit
 
 ---
 
@@ -38,6 +41,7 @@
 | **ORM** | Prisma | ^7.3.0 |
 | **Authentication** | Better Auth | ^1.4.18 |
 | **Payment Gateway** | Stripe | ^20.3.1 |
+| **AI Quiz Generation** | Genkit | ^1.31.0 |
 | **Validation** | Zod | ^4.3.6 |
 | **JWT** | jsonwebtoken | ^9.0.3 |
 | **CORS** | cors | ^2.8.6 |
@@ -52,8 +56,7 @@ ilearning-backend/
 ├── prisma/
 │   ├── migrations/                 # Database migrations
 │   │   ├── migration_lock.toml
-│   │   ├── 20260319164246/
-│   │   └── 20260325032230/
+│   │
 │   └── schema/                     # Prisma schema files (modular)
 │       ├── auth.prisma             # Auth-related models
 │       ├── enum.prisma             # Enums (Role, Status types)
@@ -338,7 +341,7 @@ Cookie: better-auth.session_token=<token>
 | `GET` | `/` | Public | Get all active plans |
 | `POST` | `/` | Protected** | Create new subscription plan |
 
-**Protected**: Requires ADMIN or SUPER_ADMIN role
+**Protected**: Requires ADMIN role
 
 #### Example Requests
 
@@ -476,9 +479,7 @@ The webhook endpoint is handled directly in `app.ts` and uses Stripe's signature
 
 ```typescript
 enum Role {
-  SUPER_ADMIN  // Full system access
-  ADMIN        // System administration (limited)
-  INSTRUCTOR   // Create/manage courses
+  ADMIN        // System administration
   STUDENT      // Access learning content
 }
 ```
@@ -494,7 +495,7 @@ router.get("/me", checkAuth(Role.STUDENT), AuthController.getMe)
 
 // Multiple roles allowed
 router.get("/", 
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN), 
+  checkAuth(Role.ADMIN, Role.ADMIN), 
   SubscriptionController.getAllSubscriptions
 )
 ```
@@ -525,20 +526,14 @@ router.get("/",
 - Webhook handling for payment confirmations
 - Invoice URL storage and tracking
 
-### 3. Student Profiles
-- Comprehensive student profile management
-- Personal information storage
-- Profile photo support
-- Contact and address management
-- Soft delete functionality
 
-### 4. Premium Access Control
+### 3. Premium Access Control
 - Middleware-based premium verification
 - Student premium access checking
 - Status-based access control
 - Automatic expiration handling
 
-### 5. Admin Dashboard Support
+### 4. Admin Dashboard Support
 - Admin-only subscription viewing
 - Bulk subscription status updates
 - Unpaid subscription management
